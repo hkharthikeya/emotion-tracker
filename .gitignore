@@ -1,0 +1,44 @@
+# Python & Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+
+# Environment Variables
+.env
+!.env.example
+
+# Node & NPM
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# IDEs & Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Models (Keep model docs, ignore heavy binary cache if needed)
+# models/*.onnx
+
+# OS generated
+Thumbs.db
+Desktop.ini
+.DS_Store

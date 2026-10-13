@@ -1,0 +1,28 @@
+{
+  "name": "emoticam",
+  "version": "1.0.0",
+  "description": "EmotiCam Real-Time Facial Emotion Detection Using ESP32-CAM + Django + AI",
+  "main": "static/js/app.js",
+  "scripts": {
+    "dev": "python manage.py runserver 127.0.0.1:8000",
+    "start": "python manage.py runserver 127.0.0.1:8000",
+    "serve": "python manage.py runserver 127.0.0.1:8000",
+    "dev:lan": "python manage.py runserver 0.0.0.0:8000",
+    "test": "python manage.py test",
+    "migrate": "python manage.py migrate"
+  },
+  "keywords": [
+    "emoticam",
+    "esp32-cam",
+    "emotion-recognition",
+    "django-channels",
+    "opencv",
+    "chartjs"
+  ],
+  "author": "EmotiCam Team",
+  "license": "MIT",
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^6.5.1",
+    "chart.js": "^4.4.1"
+  }
+}

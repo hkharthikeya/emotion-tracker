@@ -1,0 +1,1 @@
+# EmotiCam Django Configuration Package

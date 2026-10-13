@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="EmotiCam - Real-Time Facial Emotion Detection Web Dashboard powered by ESP32-CAM and AI">
+    <meta name="theme-color" content="#0b0f19">
+    <title>{{ page_title }}</title>
+    
+    <!-- Google Fonts: Inter & Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- FontAwesome CDN for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Chart.js for Emotion Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Custom Modern CSS -->
+    <link rel="stylesheet" href="/static/css/style.css?v=1.4">
+    <link rel="icon" href="data:,">
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="brand-section">
+                <div class="logo-icon">
+                    <i class="fa-solid fa-face-smile-beam"></i>
+                </div>
+                <div class="brand-text">
+                    <h1 class="brand-title">EmotiCam</h1>
+                    <p class="brand-subtitle">Real-Time Facial Emotion Analysis</p>
+                </div>
+            </div>
+
+            <!-- Global Status Badges -->
+            <div class="header-status-group">
+                <div id="cameraStatusPill" class="status-pill offline">
+                    <span class="pulse-dot"></span>
+                    <i class="fa-solid fa-video"></i>
+                    <span class="status-text">Camera: <strong id="cameraStatusText">OFFLINE</strong></span>
+                </div>
+                <div id="aiStatusPill" class="status-pill standby">
+                    <span class="pulse-dot"></span>
+                    <i class="fa-solid fa-brain"></i>
+                    <span class="status-text">AI: <strong id="aiStatusText">STANDBY</strong></span>
+                </div>
+                <div id="wsStatusPill" class="status-pill connecting">
+                    <span class="pulse-dot"></span>
+                    <i class="fa-solid fa-network-wired"></i>
+                    <span class="status-text">WS: <strong id="wsStatusText">CONNECTING</strong></span>
+                </div>
+                <!-- Theme Mode Toggle -->
+                <button id="themeToggleBtn" class="theme-toggle-btn" title="Toggle Light / Dark Theme" aria-label="Toggle Theme">
+                    <i class="fa-solid fa-sun" id="themeIcon"></i>
+                    <span id="themeLabel">Light</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN DASHBOARD CONTENT -->
+        <main class="dashboard-grid">
+            <!-- LEFT PANEL: LIVE CAMERA & CONTROLS -->
+            <section class="panel camera-panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <i class="fa-solid fa-camera-viewfinder"></i>
+                        <h2>LIVE CAMERA FEED</h2>
+                    </div>
+                    <div class="camera-stream-badge">
+                        <span id="targetIpBadge" class="ip-badge">{% if camera_url == '0' or camera_url == 'webcam' %}Laptop Webcam (0){% else %}{{ camera_url }}{% endif %}</span>
+                    </div>
+                </div>
+
+                <!-- Source Mode Selector Tabs -->
+                <div class="source-selector-tabs" id="sourceSelectorTabs">
+                    <button id="tabBrowserCam" class="source-tab" title="Use your browser's webcam — no ESP32 needed">
+                        <i class="fa-solid fa-webcam"></i>
+                        <span>Browser Webcam</span>
+                        <span class="tab-badge">LOCAL</span>
+                    </button>
+                    <button id="tabServerCam" class="source-tab {% if camera_url == '0' or camera_url == 'webcam' %}active{% endif %}" title="Server-side webcam (OpenCV index 0)">
+                        <i class="fa-solid fa-laptop"></i>
+                        <span>Server Webcam</span>
+                        <span class="tab-badge">SERVER</span>
+                    </button>
+                    <button id="tabEsp32" class="source-tab {% if camera_url != '0' and camera_url != 'webcam' %}active{% endif %}" title="ESP32-CAM over Wi-Fi">
+                        <i class="fa-solid fa-microchip"></i>
+                        <span>ESP32-CAM</span>
+                        <span class="tab-badge">IOT</span>
+                    </button>
+                </div>
+
+                <!-- Hidden browser webcam capture elements -->
+                <video id="browserWebcamVideo" autoplay playsinline muted style="display:none;"></video>
+                <canvas id="browserWebcamCanvas" style="display:none;"></canvas>
+
+                <!-- Video Viewport Container -->
+                <div class="video-viewport" id="videoViewport">
+                    <img id="liveVideoFeed" class="live-stream-image" src="" alt="EmotiCam Live Stream Feed" />
+                    
+                    <!-- HUD Status Overlay Elements -->
+                    <div class="viewport-hud-overlay">
+                        <div class="hud-stat-badge">
+                            <span class="stat-label">FPS:</span>
+                            <span id="hudFps" class="stat-val">0.0</span>
+                        </div>
+                        <div class="hud-stat-badge">
+                            <span class="stat-label">LATENCY:</span>
+                            <span id="hudLatency" class="stat-val">0 ms</span>
+                        </div>
+                        <div class="hud-stat-badge">
+                            <span class="stat-label">TRACKED:</span>
+                            <span id="hudFaces" class="stat-val">0</span>
+                        </div>
+                    </div>
+
+                    <!-- Offline / Loading Banner -->
+                    <div id="videoOverlayMessage" class="video-overlay-msg hidden">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span id="overlayMsgText">Connecting to ESP32-CAM...</span>
+                    </div>
+                </div>
+
+                <!-- Control Buttons Bar -->
+                <div class="control-actions-bar">
+                    <button id="toggleStreamBtn" class="btn btn-primary" title="Start or Pause Stream Processing">
+                        <i class="fa-solid fa-play"></i>
+                        <span id="toggleStreamBtnText">START PROCESSING</span>
+                    </button>
+                    <button id="reconnectCameraBtn" class="btn btn-secondary" title="Attempt Reconnect / Fix Camera">
+                        <i class="fa-solid fa-screwdriver-wrench"></i>
+                        <span>Fix &amp; Reconnect</span>
+                    </button>
+                    <button id="configCameraBtn" class="btn btn-outline" title="Change ESP32 Camera IP">
+                        <i class="fa-solid fa-gear"></i>
+                        <span>Source / IP Config</span>
+                    </button>
+                    <button id="snapshotBtn" class="btn btn-icon" title="Save Snapshot">
+                        <i class="fa-solid fa-camera"></i>
+                    </button>
+                </div>
+
+                <!-- Inline Camera IP Config Collapse Drawer -->
+                <div id="ipConfigDrawer" class="config-drawer hidden">
+                    <div class="config-drawer-content">
+                        <div class="input-group">
+                            <label for="cameraIpInput">Video Source (ESP32-CAM URL or <code>0</code> for Webcam):</label>
+                            <div class="input-with-action">
+                                <input type="text" id="cameraIpInput" value="{{ camera_url }}" placeholder="http://192.168.1.100 or 0" />
+                                <button id="saveIpBtn" class="btn btn-primary btn-sm">Save & Connect</button>
+                            </div>
+                            <div class="quick-preset-links" style="margin-top: 0.6rem; display: flex; gap: 0.5rem; font-size: 0.8rem;">
+                                <button type="button" id="presetWebcamBtn" class="btn btn-xs btn-outline">Set: Laptop Webcam (0)</button>
+                                <button type="button" id="presetEsp32Btn" class="btn btn-xs btn-outline">Set: ESP32-CAM (192.168.1.100)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: CURRENT EMOTION & LIVE METRICS -->
+            <section class="panel emotion-panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <i class="fa-solid fa-chart-simple"></i>
+                        <h2>CURRENT EMOTION</h2>
+                    </div>
+                    <span id="faceDetectedTag" class="badge badge-neutral">SEARCHING FACE</span>
+                </div>
+
+                <!-- Big Primary Emotion Card -->
+                <div class="emotion-hero-card" id="emotionHeroCard">
+                    <div class="emotion-emoji-container">
+                        <span id="primaryEmoji" class="hero-emoji">😐</span>
+                    </div>
+                    <div class="emotion-details">
+                        <h3 id="primaryEmotionName" class="hero-emotion-title">NO FACE</h3>
+                        <div class="confidence-bar-wrapper">
+                            <div class="confidence-header">
+                                <span class="conf-label">Confidence</span>
+                                <span id="primaryConfidenceVal" class="conf-percentage">0%</span>
+                            </div>
+                            <div class="progress-track">
+                                <div id="primaryConfidenceBar" class="progress-fill" style="width: 0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Real-time Telemetry Metrics 4-Box Grid -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fa-solid fa-user-group"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-title">FACE COUNT</span>
+                            <span id="metricFaceCount" class="metric-value">0</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fa-solid fa-gauge-high"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-title">FPS</span>
+                            <span id="metricFps" class="metric-value">0.0</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fa-solid fa-stopwatch"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-title">LATENCY</span>
+                            <span id="metricLatency" class="metric-value">0 ms</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i class="fa-solid fa-microchip"></i></div>
+                        <div class="metric-info">
+                            <span class="metric-title">AI ENGINE</span>
+                            <span class="metric-value small-text">OpenCV DNN</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Emotion Probability Distribution Bars -->
+                <div class="emotion-breakdown-section">
+                    <h4 class="section-subtitle">Real-Time Emotion Probabilities</h4>
+                    <div class="emotion-bars-list">
+                        <!-- Happy -->
+                        <div class="emotion-bar-item" data-emotion="Happy">
+                            <div class="bar-label-group">
+                                <span>😄 Happy</span>
+                                <span id="val_Happy" class="bar-val">0%</span>
+                            </div>
+                            <div class="bar-track"><div id="bar_Happy" class="bar-fill happy" style="width: 0%;"></div></div>
+                        </div>
+                        <!-- Neutral -->
+                        <div class="emotion-bar-item" data-emotion="Neutral">
+                            <div class="bar-label-group">
+                                <span>😐 Neutral</span>
+                                <span id="val_Neutral" class="bar-val">0%</span>
+                            </div>
+                            <div class="bar-track"><div id="bar_Neutral" class="bar-fill neutral" style="width: 0%;"></div></div>
+                        </div>
+                        <!-- Surprise -->
+                        <div class="emotion-bar-item" data-emotion="Surprise">
+                            <div class="bar-label-group">
+                                <span>😲 Surprise</span>
+                                <span id="val_Surprise" class="bar-val">0%</span>
+                            </div>
+                            <div class="bar-track"><div id="bar_Surprise" class="bar-fill surprise" style="width: 0%;"></div></div>
+                        </div>
+                        <!-- Sad -->
+                        <div class="emotion-bar-item" data-emotion="Sad">
+                            <div class="bar-label-group">
+                                <span>😢 Sad</span>
+                                <span id="val_Sad" class="bar-val">0%</span>
+                            </div>
+                            <div class="bar-track"><div id="bar_Sad" class="bar-fill sad" style="width: 0%;"></div></div>
+                        </div>
+                        <!-- Angry -->
+                        <div class="emotion-bar-item" data-emotion="Angry">
+                            <div class="bar-label-group">
+                                <span>😠 Angry</span>
+                                <span id="val_Angry" class="bar-val">0%</span>
+                            </div>
+                            <div class="bar-track"><div id="bar_Angry" class="bar-fill angry" style="width: 0%;"></div></div>
+                        </div>
+                        <!-- Fear -->
+                        <div class="emotion-bar-item" data-emotion="Fear">
+                            <div class="bar-label-group">
+                                <span>😨 Fear</span>
+                                <span id="val_Fear" class="bar-val">0%</span>
+                            </div>
+                            <div class="bar-track"><div id="bar_Fear" class="bar-fill fear" style="width: 0%;"></div></div>
+                        </div>
+                        <!-- Disgust -->
+                        <div class="emotion-bar-item" data-emotion="Disgust">
+                            <div class="bar-label-group">
+                                <span>🤢 Disgust</span>
+                                <span id="val_Disgust" class="bar-val">0%</span>
+                            </div>
+                            <div class="bar-track"><div id="bar_Disgust" class="bar-fill disgust" style="width: 0%;"></div></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- MULTIMODAL NLP + VISION FUSION SECTION -->
+        <section class="panel multimodal-panel" style="margin-top: 1.5rem;">
+            <div class="panel-header">
+                <div class="panel-title-group">
+                    <i class="fa-solid fa-comments"></i>
+                    <h2>MULTIMODAL EMOTION INTELLIGENCE (VISION + NLP)</h2>
+                </div>
+                <span class="badge badge-accent">Facial AI + Text Sentiment Fusion</span>
+            </div>
+            
+            <div class="multimodal-grid">
+                <!-- Left: Text Input & Sample Prompts -->
+                <div class="nlp-input-column">
+                    <label for="nlpTextInput" class="form-label">Speech Transcript / User Sentiment Input:</label>
+                    <div class="nlp-input-wrapper">
+                        <textarea id="nlpTextInput" class="form-textarea" rows="3" placeholder="Type or paste what the user said (e.g. 'I feel so excited and overjoyed with this result!')..."></textarea>
+                        <div class="nlp-input-actions">
+                            <button id="analyzeNlpBtn" class="btn btn-primary btn-sm">
+                                <i class="fa-solid fa-wand-magic-sparkles"></i> Analyze & Fuse Emotion
+                            </button>
+                            <button id="clearNlpBtn" class="btn btn-outline btn-sm">
+                                <i class="fa-solid fa-eraser"></i> Clear
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Quick Presets -->
+                    <div class="quick-presets-group">
+                        <span class="presets-title">Sample Inputs:</span>
+                        <div class="preset-chips">
+                            <button type="button" class="chip" data-sample="I am extremely happy, thrilled, and grateful for this fantastic milestone!">😄 Joy / Happy</button>
+                            <button type="button" class="chip" data-sample="I feel completely heartbroken, miserable, and lonely today.">😢 Sadness</button>
+                            <button type="button" class="chip" data-sample="This is totally unacceptable and I am furious with this deceit!">😠 Anger</button>
+                            <button type="button" class="chip" data-sample="Whoa! I am completely stunned and amazed by this unbelievable revelation!">😲 Surprise</button>
+                            <button type="button" class="chip" data-sample="I am so terrified and deeply worried about what might happen next.">😨 Fear</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Middle: NLP Predicted Emotion Card -->
+                <div class="nlp-output-column">
+                    <div class="sub-panel-card">
+                        <h4 class="sub-title"><i class="fa-solid fa-comment-dots"></i> NLP Text Emotion</h4>
+                        <div class="nlp-result-hero" id="nlpResultCard">
+                            <span id="nlpEmoji" class="nlp-hero-emoji">💬</span>
+                            <div class="nlp-result-meta">
+                                <div id="nlpEmotionName" class="nlp-hero-emotion">AWAITING TEXT</div>
+                                <div class="nlp-conf-row">
+                                    <span>Confidence:</span>
+                                    <strong id="nlpConfidenceVal">0%</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: Multimodal Fused Emotion Card -->
+                <div class="multimodal-output-column">
+                    <div class="sub-panel-card multimodal-hero-card">
+                        <h4 class="sub-title"><i class="fa-solid fa-dna"></i> Multimodal Unified State</h4>
+                        <div class="multimodal-result-hero" id="multimodalCard">
+                            <span id="multimodalEmoji" class="nlp-hero-emoji">🔮</span>
+                            <div class="multimodal-meta">
+                                <div id="multimodalEmotionName" class="nlp-hero-emotion">STANDBY</div>
+                                <div class="multimodal-badges-row">
+                                    <span id="congruenceBadge" class="badge badge-neutral">Congruency: --</span>
+                                    <span class="badge badge-accent">Fused: <strong id="multimodalConfidenceVal">0%</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- BOTTOM SECTION: ANALYTICS & HISTORY -->
+        <section class="bottom-analytics-grid">
+            <!-- Emotion Distribution Chart -->
+            <div class="panel chart-panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <i class="fa-solid fa-chart-pie"></i>
+                        <h2>EMOTION DISTRIBUTION</h2>
+                    </div>
+                    <span class="badge badge-accent">Session Analytics</span>
+                </div>
+                <div class="chart-wrapper">
+                    <canvas id="emotionDistributionChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Emotion History Table -->
+            <div class="panel history-panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <h2>EMOTION HISTORY</h2>
+                    </div>
+                    <div class="history-actions">
+                        <button id="clearHistoryBtn" class="btn btn-outline btn-xs" title="Clear History Table">
+                            <i class="fa-solid fa-trash-can"></i> Clear
+                        </button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table class="history-table">
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Face Track</th>
+                                <th>Detected Emotion</th>
+                                <th>Confidence</th>
+                                <th>Latency</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr class="empty-row">
+                                <td colspan="5">No emotion events logged yet. Stand in front of camera to begin.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <p>EmotiCam &copy; 2026 — Real-Time Edge Computer Vision & Emotion Intelligence</p>
+            <p class="footer-links">
+                <span>ESP32-CAM (OV2640) &bull; Django Channels WebSocket &bull; OpenCV DNN</span>
+            </p>
+        </footer>
+    </div>
+
+    <!-- Client Application JavaScript -->
+    <script src="/static/js/app.js?v=1.4"></script>
+</body>
+</html>
