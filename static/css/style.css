@@ -408,6 +408,92 @@ body {
     color: var(--text-primary);
 }
 
+.theme-mode-switcher {
+    display: inline-flex;
+    align-items: center;
+    background: rgba(15, 23, 42, 0.75);
+    border: 1px solid var(--border-color);
+    border-radius: 30px;
+    padding: 3px;
+    gap: 3px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    transition: var(--transition-smooth);
+}
+
+.theme-option-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.4rem 0.95rem;
+    border-radius: 24px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-secondary);
+    font-family: var(--font-sans);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    user-select: none;
+}
+
+.theme-option-btn i {
+    font-size: 0.88rem;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.theme-option-btn:hover {
+    color: var(--text-primary);
+}
+
+.theme-option-btn:hover i {
+    transform: rotate(20deg) scale(1.12);
+}
+
+#themeBtnLight.active {
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.45);
+    background: rgba(245, 158, 11, 0.15);
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+}
+
+#themeBtnDark.active {
+    color: #a5b4fc;
+    border-color: rgba(99, 102, 241, 0.55);
+    background: rgba(99, 102, 241, 0.22);
+    box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+}
+
+[data-theme="light"] .theme-mode-switcher {
+    background: rgba(241, 245, 249, 0.95);
+    border-color: rgba(148, 163, 184, 0.35);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .theme-option-btn {
+    color: #64748b;
+}
+
+[data-theme="light"] .theme-option-btn:hover {
+    color: #0f172a;
+}
+
+[data-theme="light"] #themeBtnLight.active {
+    background: #ffffff;
+    color: #d97706;
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
+}
+
+[data-theme="light"] #themeBtnDark.active {
+    background: #ffffff;
+    color: #4f46e5;
+    border-color: rgba(99, 102, 241, 0.4);
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
 .theme-toggle-btn {
     display: inline-flex;
     align-items: center;
@@ -423,22 +509,6 @@ body {
     cursor: pointer;
     transition: var(--transition-smooth);
     user-select: none;
-}
-
-.theme-toggle-btn:hover {
-    background: rgba(51, 65, 85, 0.9);
-    border-color: rgba(250, 204, 21, 0.4);
-    transform: translateY(-1px);
-    box-shadow: 0 0 12px rgba(250, 204, 21, 0.2);
-}
-
-.theme-toggle-btn i {
-    font-size: 0.9rem;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-
-.theme-toggle-btn:hover i {
-    transform: rotate(45deg);
 }
 
 .pulse-dot {

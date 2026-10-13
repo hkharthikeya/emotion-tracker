@@ -22,6 +22,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggleBtn = document.getElementById('themeToggleBtn');
     const themeIcon = document.getElementById('themeIcon');
     const themeLabel = document.getElementById('themeLabel');
+    const themeBtnLight = document.getElementById('themeBtnLight');
+    const themeBtnDark = document.getElementById('themeBtnDark');
 
     // Viewport HUD Stats
     const hudFps = document.getElementById('hudFps');
@@ -166,6 +168,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function applyTheme(theme) {
         if (theme === 'light') {
             document.documentElement.setAttribute('data-theme', 'light');
+            if (themeBtnLight) {
+                themeBtnLight.classList.add('active');
+                themeBtnLight.setAttribute('aria-pressed', 'true');
+            }
+            if (themeBtnDark) {
+                themeBtnDark.classList.remove('active');
+                themeBtnDark.setAttribute('aria-pressed', 'false');
+            }
             if (themeIcon) themeIcon.className = 'fa-solid fa-moon';
             if (themeLabel) themeLabel.textContent = 'Dark';
             if (themeToggleBtn) {
@@ -182,6 +192,14 @@ document.addEventListener('DOMContentLoaded', () => {
             distributionChart.update();
         } else {
             document.documentElement.removeAttribute('data-theme');
+            if (themeBtnDark) {
+                themeBtnDark.classList.add('active');
+                themeBtnDark.setAttribute('aria-pressed', 'true');
+            }
+            if (themeBtnLight) {
+                themeBtnLight.classList.remove('active');
+                themeBtnLight.setAttribute('aria-pressed', 'false');
+            }
             if (themeIcon) themeIcon.className = 'fa-solid fa-sun';
             if (themeLabel) themeLabel.textContent = 'Light';
             if (themeToggleBtn) {
@@ -209,6 +227,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             applyTheme('dark');
         }
+    }
+
+    if (themeBtnLight) {
+        themeBtnLight.addEventListener('click', () => applyTheme('light'));
+    }
+
+    if (themeBtnDark) {
+        themeBtnDark.addEventListener('click', () => applyTheme('dark'));
     }
 
     if (themeToggleBtn) {
